@@ -10,6 +10,11 @@ when@dev:
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
                 level: debug
                 channels: ["!event"]
+            telegram_alerts:
+                type: telegram
+                token: '%env(TELEGRAM_BOT_TOKEN)%'
+                channel: '%env(TELEGRAM_CHAT_ID)%'
+                level: critical
             console:
                 type: console
                 process_psr_3_messages: false
