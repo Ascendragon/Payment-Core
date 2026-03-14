@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Domain\Money;
 use App\Repository\AccountRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -62,4 +63,15 @@ class Account
 
         return $this;
     }
+
+    public function withdraw(Money $amountToWithdraw): void
+    {
+        $currentBalance = new Money($this->balance, $this->currency);
+        if($currentBalance->isGreaterOrEqual($amountToWithdraw)) {
+
+        }
+    }
+
+
+
 }

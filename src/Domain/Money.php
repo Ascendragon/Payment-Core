@@ -18,4 +18,11 @@ final class Money
         }
         return new self($amount, $currency);
     }
+    public function isGreaterOrEqual(Money $amount): bool
+    {
+        if(bccomp($this->amount, $amount->amount, 2) === -1 && $this->currency === $amount->currency) {
+            return true;
+    }
+        return false;
+    }
 }
