@@ -21,12 +21,13 @@ RUN docker-php-ext-install \
     pdo_pgsql \
     bcmath
 
-# Install Redis extension
-RUN pecl install redis && docker-php-ext-enable redis
+ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+
 
 # (Optional) Install amqp extension (if you want native AMQP).
 # Symfony Messenger can also work via amqp lib; but this is fine in dev.
-RUN pecl install amqp && docker-php-ext-enable amqp
+RUN chmod +x /usr/local/bin/install-php-extensions && \
+    install-php-extensions redis amqp
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

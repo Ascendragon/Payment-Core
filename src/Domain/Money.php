@@ -2,13 +2,14 @@
 
 namespace App\Domain;
 
+use App\Domain\Transfer\Exception\CurrencyMismatchException;
 use DomainException;
 
 final class Money
 {
     public function __construct(
-        public string $amount,
-        public string $currency
+        public readonly string $amount,
+        public readonly string $currency
     ) {}
 
     public static function of(string $amount, string $currency): self
@@ -18,11 +19,20 @@ final class Money
         }
         return new self($amount, $currency);
     }
-    public function isGreaterOrEqual(Money $amount): bool
+    public function isGreaterOrEqual(Money $other): bool
     {
-        if(bccomp($this->amount, $amount->amount, 2) === -1 && $this->currency === $amount->currency) {
-            return true;
+        if($this->currency !== $other->currency) {
+            throw new CurrencyMismatchException();
+        }
+        return bccomp($this->amount, $other->amount, 2) >= 0;
+
     }
-        return false;
+    public function subtract(Money $other): self
+    {
+        if($this->currency !== $other->currency) {
+            throw new CurrencyMismatchException();
+        }
+        $currentBalance = bcsub($this->amount, $other->amount, 2);
+        return new self($currentBalance, $other->currency);
     }
 }

@@ -4,10 +4,13 @@ namespace App\Application\Transfer;
 
 use App\Contracts\MessageBrokerInterface;
 use App\Domain\IdempotencyKey;
+use App\Domain\Money;
 use App\Domain\Transfer\Exception\AccountNotFoundException;
+use App\Domain\Transfer\Exception\ConcurrencyConflictException;
 use App\Domain\Transfer\Exception\InsufficientFundsException;
 use App\Domain\Transfer\Message\TransferCompletedMessage;
 use App\Entity\Account;
+use App\Infrastructure\Database\DatabaseRetryRunner;
 use App\Infrastructure\Idempotency\DbalIdempotencyStore;
 use App\Infrastructure\Outbox\DbalOutboxStore;
 use Doctrine\DBAL\Connection;
@@ -22,6 +25,7 @@ final class TransferService
         private readonly DbalIdempotencyStore $store,
         private readonly MessageBrokerInterface $messageBroker,
         private readonly DbalOutboxStore $outboxStore,
+        private readonly DatabaseRetryRunner $retryRunner,
     ) {}
 
     public function transfer(
@@ -32,43 +36,74 @@ final class TransferService
         string $idempotencyKey
     )
     {
+        if ($fromAccountId === $toAccountId) {
+            throw new \InvalidArgumentException('Transfer to the same account is not allowed.');
+        }
+
         // Создаем объект ключа
         $key = IdempotencyKey::fromHeader($idempotencyKey);
 
         // Генерируем хэш запроса(чтобы избежать подмены данных)
-        $requestHash = md5($fromAccountId . $toAccountId . $amount.$currency);
+        $requestHash = hash('sha256', $fromAccountId . $toAccountId . $amount . $currency);
 
-        // Попытка занять ключ
+        $amountToWithdraw = new Money($amount, $currency);
 
-
-        // Начинаем транзакцию
-        $this->db->beginTransaction();
-
-        try {
+        $this->retryRunner->run(function() use($fromAccountId, $toAccountId, $amount, $currency, $key, $requestHash,$amountToWithdraw) {
             $this->store->acquire(Uuid::fromString($fromAccountId), $key, $requestHash);
 
-            $senderData = $this->db->fetchAssociative("SELECT balance,version FROM account WHERE id = :id", ['id' => $fromAccountId]);
+
+            $senderData = $this->db->fetchAssociative("SELECT balance,version,currency FROM account WHERE id = :id", ['id' => $fromAccountId]);
 
             if ($senderData === false) {
                 throw new AccountNotFoundException($fromAccountId);
 
             }
-            if(bccomp((string)$senderData['balance'], $amount , 2) === -1) {
+
+            $receiverData = $this->db->fetchAssociative(
+                'SELECT id, currency,version FROM account WHERE id = :id',
+                ['id' => $toAccountId]
+            );
+            if ($receiverData === false) {
+                throw new AccountNotFoundException($toAccountId);
+            }
+
+
+
+            if ($senderData['currency'] !== $currency) {
+                throw new \InvalidArgumentException('Sender account currency does not match transfer currency.');
+            }
+
+            if ($receiverData['currency'] !== $currency) {
+                throw new \InvalidArgumentException('Receiver account currency does not match transfer currency.');
+            }
+
+            $currentBalance = new Money((string)$senderData['balance'], $senderData['currency']);
+
+            if (!$currentBalance->isGreaterOrEqual($amountToWithdraw)) {
                 throw new InsufficientFundsException();
             }
 
-            $res = $this->db->executeStatement(
-                "UPDATE account SET balance = CAST((CAST(balance AS NUMERIC) - CAST(:amount AS NUMERIC)) AS VARCHAR), version = version + 1 WHERE id = :id AND version = :version",
-                ['id' => $fromAccountId, 'version' => $senderData['version'], 'amount' => $amount]
-            );
-            if($res === 0) {
-                throw new OptimisticLockException("В процессе выполнения возникла ошибка",Account::class );
+
+            $newSenderBalance =  $currentBalance->subtract($amountToWithdraw);
+
+            $updatedSenderRows = $this->db->executeStatement("UPDATE account set balance = :new_balance,version = version + 1 WHERE id = :id AND version = :version", [
+                'id' => $fromAccountId,
+                'version' => $senderData['version'],
+                'new_balance' => $newSenderBalance->amount,
+            ]);
+
+
+            if($updatedSenderRows === 0) {
+                throw new ConcurrencyConflictException("Sender account was modified concurrently.",Account::class );
             }
 
-            $this->db->executeStatement(
+            $updatedReceiverRows = $this->db->executeStatement(
                 "UPDATE account SET balance = CAST((CAST(balance AS NUMERIC) + CAST(:amount AS NUMERIC)) AS VARCHAR), version = version + 1 WHERE id = :id",
                 ['id' => $toAccountId, 'amount' => $amount]
             );
+            if ($updatedReceiverRows === 0) {
+                throw new AccountNotFoundException($toAccountId);
+            }
 
             $message = new TransferCompletedMessage(
                 Uuid::v4()->toRfc4122(), // или просто (string) Uuid::v4()
@@ -81,14 +116,7 @@ final class TransferService
 
             $this->outboxStore->save($message);
             $this->store->markAsCompleted(Uuid::fromString($fromAccountId), $key);
-            $this->db->commit();
-
-
-
-        } catch(\Throwable $e) {
-            $this->db->rollBack();
-            throw $e;
-        }
+        });
 
 
 
