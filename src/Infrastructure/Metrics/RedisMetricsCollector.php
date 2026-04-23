@@ -10,16 +10,21 @@ class RedisMetricsCollector implements MetricsCollectorInterface
     public function __construct(private Redis $redis){}
     public function incrementTransferCount(string $status): void
     {
-        $this->redis->incr('')
+        $this->redis->incr('transfer_count:' . strtolower($status));
     }
 
     public function incrementRetryCount(): void
     {
-        // TODO: Implement incrementRetryCount() method.
+        $this->redis->incr('transfer_retry_count');
     }
 
     public function observeTransferDuration(float $seconds): string
     {
-        // TODO: Implement observeTransferDuration() method.
+        // Временная реализация под текущий контракт интерфейса.
+        // Позже можно заменить на histogram/summary через Prometheus.
+        $key = 'transfer_duration_last_seconds';
+        $this->redis->set($key, (string) $seconds);
+
+        return $key;
     }
 }
