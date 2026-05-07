@@ -6,11 +6,7 @@ namespace App\Controller;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use App\Application\Transfer\TransferService;
-use App\Domain\Transfer\Exception\AlreadyProcessedException;
-use App\Domain\Transfer\Exception\AlreadyProcessingException;
-use App\Domain\Transfer\Exception\IdempotencyConflictException;
 use App\Http\Request\TransferRequest;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
@@ -51,32 +47,21 @@ class TransferController
     (#[MapRequestPayload]TransferRequest $payload,
      Request $request,
      TransferService $transferService,
-     LoggerInterface $logger
-    )
+    ) : JsonResponse
     {
         $idempotencyKey = $request->headers->get('Idempotency-Key');
         if (!$idempotencyKey) {
             return new JsonResponse(['error' => 'Missing Idempotency-Key header'], 400);
         }
 
-        try {
-            $transferService->transfer(
-                $payload->fromAccountId,
-                $payload->toAccountId,
-                $payload->amount,
-                $payload->currency,
-                $idempotencyKey
-            );
-        } catch (AlreadyProcessingException $e) {
-            // Запрос прямо сейчас выполняется другим потоком
-            return new JsonResponse(['error' => 'Request is already processing'], 409);
-        } catch (AlreadyProcessedException $e) {
-            // ИСТИННАЯ ИДЕМПОТЕНТНОСТЬ: Запрос уже был выполнен ранее. Просто говорим "ОК"!
-            return new JsonResponse(['status' => 'success']);
-        } catch (IdempotencyConflictException $e) {
-            // Ключ тот же, а данные (сумма, получатель) изменились - это попытка взлома/ошибки
-            return new JsonResponse(['error' => 'Idempotency conflict. Request parameters changed.'], 409);
-        }
+        $transferService->transfer(
+            $payload->fromAccountId,
+            $payload->toAccountId,
+            $payload->amount,
+            $payload->currency,
+            $idempotencyKey
+        );
+
 
         return new JsonResponse(['status' => 'success']);
 
