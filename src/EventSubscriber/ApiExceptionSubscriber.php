@@ -2,62 +2,122 @@
 
 namespace App\EventSubscriber;
 
+use App\Domain\DomainException;
 use App\Domain\Transfer\Exception\AccountNotFoundException;
+use App\Domain\Transfer\Exception\AlreadyProcessedException;
+use App\Domain\Transfer\Exception\AlreadyProcessingException;
+use App\Domain\Transfer\Exception\ConcurrencyConflictException;
+use App\Domain\Transfer\Exception\CurrencyMismatchException;
+use App\Domain\Transfer\Exception\IdempotencyConflictException;
+use App\Domain\Transfer\Exception\InsufficientFundsException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 
 class ApiExceptionSubscriber implements EventSubscriberInterface
 {
+
+    private const EXCEPTION_MAP = [
+        AccountNotFoundException::class => 404,
+        InsufficientFundsException::class => 422,
+        CurrencyMismatchException::class => 422,
+        IdempotencyConflictException::class => 409,
+        AlreadyProcessingException::class => 409,
+        ConcurrencyConflictException::class => 503
+    ];
+
     public function __construct(private LoggerInterface $logger)
-    {}
+    {
+    }
 
     public function onKernelException(ExceptionEvent $event): void
     {
         $exception = $event->getThrowable();
-        $request = $event->getRequest();
-        if(!str_starts_with($request->getPathInfo(), '/api/')) {
+
+        if ($exception instanceof AlreadyProcessedException) {
+            $event->setResponse(new JsonResponse(['status' => 'success']));
+            return;
+        }
+        if (!$this->isApiRequest($event->getRequest())) {
             return;
         }
 
-        if($exception instanceof HttpExceptionInterface) {
-            $statusCode = $exception->getStatusCode();
-            $message = $exception->getMessage();
-        }
-        if($exception instanceof AccountNotFoundException ) {
-            $statusCode = 404;
-            $message = $exception->getMessage();
-        }
-        if($exception instanceof )
-        else {
-            $statusCode = 500;
-            $message = 'Internal Server Error';
+        [$statusCode, $message] = $this->resolveStatusAndMessage($exception);
 
-            $this->logger->critical(sprintf(
-                'Критическая ошибка API: %s. Файл: %s:%d',
-                $exception->getMessage(),
-                $exception->getFile(),
-                $exception->getLine()
-            ));
+        if ($statusCode >= 500) {
+            $this->logException($event->getThrowable());
         }
-        $response = new JsonResponse([
+
+        $event->setResponse($this->buildResponse($statusCode, $message));
+    }
+    private function logException(\Exception $exception): void
+    {
+        $this->logger->critical('Unhandled API exception', [
+            'exception' => $exception::class,
+            'message' => $exception->getMessage(),
+            'file' => $exception->getFile(),
+            'trace' => $exception->getTraceAsString(),
+            'line' => $exception->getLine()
+        ]);
+    }
+    private function buildErrorResponse(int $statusCode, string $message): JsonResponse
+    {
+        return new JsonResponse([
             'error' => [
                 'code' => $statusCode,
-                'message' => $message,
+                'message' => $message
             ]
         ], $statusCode);
-        $event->setResponse($response);
     }
 
+    public function isApiRequest(Request $request): bool
+    {
+        if (!str_starts_with($request->getPathInfo(), '/api/')) {
+            return false;
+        }
+        return true;
+    }
 
     public static function getSubscribedEvents(): array
     {
         return [
             KernelEvents::EXCEPTION => 'onKernelException',
         ];
+    }
+
+    public function resolveStatusAndMessage(\Throwable $exception)
+    {
+        if ($exception instanceof ValidationFailedException) {
+            return [422, $this->formatValidationErrors($exception)];
+        }
+        if ($exception instanceof HttpExceptionInterface) {
+            return [$exception->getStatusCode(), $exception->getMessage()];
+        }
+        foreach (self::EXCEPTION_MAP as $exceptionClass => $statusCode) {
+            if ($exception instanceof $exceptionClass) {
+                return [$statusCode, $exception->getMessage()];
+            }
+        }
+        if ($exception instanceof DomainException) {
+            return [422, $exception->getMessage()];
+        }
+
+        return [500, 'Internal Server Error'];
+    }
+
+    private function formatValidationErrors(ValidationFailedException $e): string
+    {
+        $messages = [];
+
+        foreach($e->getViolations() as $violation) {
+            $messages[] = sprintf('%s: %s', $violation->getPropertyPath(), $violation->getMessage());
+        }
+        return implode('; ', $messages);
     }
 
 }
