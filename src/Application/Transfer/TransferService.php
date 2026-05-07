@@ -9,12 +9,10 @@ use App\Domain\Transfer\Exception\AccountNotFoundException;
 use App\Domain\Transfer\Exception\ConcurrencyConflictException;
 use App\Domain\Transfer\Exception\InsufficientFundsException;
 use App\Domain\Transfer\Message\TransferCompletedMessage;
-use App\Entity\Account;
 use App\Infrastructure\Database\DatabaseRetryRunner;
 use App\Infrastructure\Idempotency\DbalIdempotencyStore;
 use App\Infrastructure\Outbox\DbalOutboxStore;
 use Doctrine\DBAL\Connection;
-use Doctrine\ORM\OptimisticLockException;
 use Symfony\Component\Uid\Uuid;
 
 final class TransferService
@@ -48,8 +46,10 @@ final class TransferService
 
         $amountToWithdraw = new Money($amount, $currency);
 
-        $this->retryRunner->run(function() use($fromAccountId, $toAccountId, $amount, $currency, $key, $requestHash,$amountToWithdraw) {
-            $this->store->acquire(Uuid::fromString($fromAccountId), $key, $requestHash);
+        $this->store->acquire(Uuid::fromString($fromAccountId), $key, $requestHash);
+
+        $this->retryRunner->run(function() use($fromAccountId, $toAccountId, $amount, $currency, $key,$amountToWithdraw) {
+
 
 
             $senderData = $this->db->fetchAssociative("SELECT balance,version,currency FROM account WHERE id = :id", ['id' => $fromAccountId]);
@@ -94,15 +94,19 @@ final class TransferService
 
 
             if($updatedSenderRows === 0) {
-                throw new ConcurrencyConflictException("Sender account was modified concurrently.",Account::class );
+                throw new ConcurrencyConflictException("Sender account was modified concurrently.");
             }
 
             $updatedReceiverRows = $this->db->executeStatement(
-                "UPDATE account SET balance = CAST((CAST(balance AS NUMERIC) + CAST(:amount AS NUMERIC)) AS VARCHAR), version = version + 1 WHERE id = :id",
-                ['id' => $toAccountId, 'amount' => $amount]
+                "UPDATE account SET balance = CAST((CAST(balance AS NUMERIC) + CAST(:amount AS NUMERIC)) AS VARCHAR), version = version + 1 WHERE id = :id AND version = :version",
+                [
+                    'id' => $toAccountId,
+                    'amount' => $amount,
+                    'version' => $receiverData['version'],
+                ]
             );
             if ($updatedReceiverRows === 0) {
-                throw new AccountNotFoundException($toAccountId);
+                throw new ConcurrencyConflictException("Receiver account was modified concurrently." );
             }
 
             $message = new TransferCompletedMessage(

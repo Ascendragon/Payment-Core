@@ -2,6 +2,7 @@
 
 namespace App\EventSubscriber;
 
+use App\Domain\Transfer\Exception\AccountNotFoundException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -25,7 +26,13 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
         if($exception instanceof HttpExceptionInterface) {
             $statusCode = $exception->getStatusCode();
             $message = $exception->getMessage();
-        } else {
+        }
+        if($exception instanceof AccountNotFoundException ) {
+            $statusCode = 404;
+            $message = $exception->getMessage();
+        }
+        if($exception instanceof )
+        else {
             $statusCode = 500;
             $message = 'Internal Server Error';
 
