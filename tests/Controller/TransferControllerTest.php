@@ -168,7 +168,7 @@ class TransferControllerTest extends WebTestCase
         ]);
 
         $client->request('POST', '/api/transfer', [], [], $sameHeader, $payload1);
-        $this->assertResponseStatusCodeSame(409);
+        $this->assertResponseIsSuccessful();
 
         $payload2= json_encode([
             'fromAccountId' => 'd290f1ee-6c54-4b01-90e6-d701748f0851',
@@ -182,7 +182,7 @@ class TransferControllerTest extends WebTestCase
 
         $responseBody = $client->getResponse()->getContent();
         $this->assertJsonStringEqualsJsonString(
-            '{"error":"Idempotency conflict. Request parameters changed."}',
+            '{"error":{"code":409,"message":"Idempotency conflict. Request parameters changed."}}',
             $responseBody
         );
 
@@ -256,7 +256,7 @@ class TransferControllerTest extends WebTestCase
         $this->assertEquals(0, (int) $countOutbox);
     }
 
-    public function testInsufficientFundsReturns500AndDoesNotChangeBalance(): void
+    public function testInsufficientFundsReturns422AndDoesNotChangeBalance(): void
     {
         $client = static::createClient();
         $db = static::getContainer()->get(Connection::class);
@@ -285,7 +285,7 @@ class TransferControllerTest extends WebTestCase
             $payload
         );
 
-        $this->assertResponseStatusCodeSame(500);
+        $this->assertResponseStatusCodeSame(422);
         $senderBalance = $db->fetchOne("SELECT balance FROM account WHERE id = :id", [
             'id' => 'd290f1ee-6c54-4b01-90e6-d701748f0851',
         ]);
