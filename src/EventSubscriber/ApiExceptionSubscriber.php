@@ -41,6 +41,8 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
 
         if ($exception instanceof AlreadyProcessedException) {
             $event->setResponse(new JsonResponse(['status' => 'success']));
+            $event->allowCustomResponseCode();
+            $event->stopPropagation();
             return;
         }
         if (!$this->isApiRequest($event->getRequest())) {
@@ -53,9 +55,11 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
             $this->logException($event->getThrowable());
         }
 
-        $event->setResponse($this->buildResponse($statusCode, $message));
+        $event->setResponse($this->buildErrorResponse($statusCode, $message));
+
+        $event->stopPropagation();
     }
-    private function logException(\Exception $exception): void
+    private function logException(\Throwable $exception): void
     {
         $this->logger->critical('Unhandled API exception', [
             'exception' => $exception::class,
