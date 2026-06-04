@@ -7,27 +7,30 @@ use Doctrine\DBAL\Connection;
 
 class DatabaseRetryRunner
 {
-    public function __construct(private readonly Connection $db){}
+    public function __construct(private readonly Connection $db)
+    {
+    }
 
-    public function run(callable $action,int $maxRetries = 3): mixed
+    public function run(callable $action, int $maxRetries = 3): mixed
     {
         $attempt = 1;
 
-        while(true){
+        while (true) {
             $this->db->beginTransaction();
             try {
                 $result = $action();
                 $this->db->commit();
+
                 return $result;
-            } catch(ConcurrencyConflictException $e) {
+            } catch (ConcurrencyConflictException $e) {
                 $this->db->rollBack();
 
-                if($attempt === $maxRetries){
+                if ($attempt === $maxRetries) {
                     throw $e;
                 }
-                $attempt++;
+                ++$attempt;
                 usleep(100000);
-            } catch(\Throwable $e) {
+            } catch (\Throwable $e) {
                 $this->db->rollBack();
                 throw $e;
             }

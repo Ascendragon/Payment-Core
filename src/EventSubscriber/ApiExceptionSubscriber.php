@@ -21,14 +21,13 @@ use Symfony\Component\Validator\Exception\ValidationFailedException;
 
 class ApiExceptionSubscriber implements EventSubscriberInterface
 {
-
     private const EXCEPTION_MAP = [
         AccountNotFoundException::class => 404,
         InsufficientFundsException::class => 422,
         CurrencyMismatchException::class => 422,
         IdempotencyConflictException::class => 409,
         AlreadyProcessingException::class => 409,
-        ConcurrencyConflictException::class => 503
+        ConcurrencyConflictException::class => 503,
     ];
 
     public function __construct(private LoggerInterface $logger)
@@ -43,6 +42,7 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
             $event->setResponse(new JsonResponse(['status' => 'success']));
             $event->allowCustomResponseCode();
             $event->stopPropagation();
+
             return;
         }
         if (!$this->isApiRequest($event->getRequest())) {
@@ -59,6 +59,7 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
 
         $event->stopPropagation();
     }
+
     private function logException(\Throwable $exception): void
     {
         $this->logger->critical('Unhandled API exception', [
@@ -66,16 +67,17 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
             'message' => $exception->getMessage(),
             'file' => $exception->getFile(),
             'trace' => $exception->getTraceAsString(),
-            'line' => $exception->getLine()
+            'line' => $exception->getLine(),
         ]);
     }
+
     private function buildErrorResponse(int $statusCode, string $message): JsonResponse
     {
         return new JsonResponse([
             'error' => [
                 'code' => $statusCode,
-                'message' => $message
-            ]
+                'message' => $message,
+            ],
         ], $statusCode);
     }
 
@@ -84,6 +86,7 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
         if (!str_starts_with($request->getPathInfo(), '/api/')) {
             return false;
         }
+
         return true;
     }
 
@@ -118,10 +121,10 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
     {
         $messages = [];
 
-        foreach($e->getViolations() as $violation) {
+        foreach ($e->getViolations() as $violation) {
             $messages[] = sprintf('%s: %s', $violation->getPropertyPath(), $violation->getMessage());
         }
+
         return implode('; ', $messages);
     }
-
 }

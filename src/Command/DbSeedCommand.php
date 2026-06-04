@@ -48,9 +48,9 @@ class DbSeedCommand extends Command
 
         $this->db->executeStatement('TRUNCATE TABLE account CASCADE');
 
-        for ($i = 1; $i <= $totalAccounts; $i++) {
+        for ($i = 1; $i <= $totalAccounts; ++$i) {
             $uuid = Uuid::v4()->toRfc4122();
-            $balance = rand(100,100000). '.00';
+            $balance = rand(100, 100000).'.00';
             $currency = 'RUB';
             $version = 1;
 
@@ -60,8 +60,8 @@ class DbSeedCommand extends Command
             $params[] = $version;
             $params[] = $currency;
 
-            if ($i % $chunkSize === 0) {
-                $sql = "INSERT INTO account (id, balance, version,currency) VALUES ".implode(', ', $values);
+            if (0 === $i % $chunkSize) {
+                $sql = 'INSERT INTO account (id, balance, version,currency) VALUES '.implode(', ', $values);
                 $this->db->executeStatement($sql, $params);
                 $values = [];
                 $params = [];

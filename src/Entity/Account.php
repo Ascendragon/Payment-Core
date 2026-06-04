@@ -2,8 +2,6 @@
 
 namespace App\Entity;
 
-use App\Domain\Money;
-use App\Domain\Transfer\Exception\InsufficientFundsException;
 use App\Repository\AccountRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -64,8 +62,4 @@ class Account
 
         return $this;
     }
-
-
-
-
 }

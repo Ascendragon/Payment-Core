@@ -8,46 +8,46 @@ use App\Domain\Transfer\Exception\AlreadyProcessedException;
 use App\Domain\Transfer\Exception\AlreadyProcessingException;
 use App\Domain\Transfer\Exception\IdempotencyConflictException;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Component\Uid\Uuid;
 
 class DbalIdempotencyStore
 {
-    public function __construct(public Connection $db) {}
+    public function __construct(public Connection $db)
+    {
+    }
 
-    public function acquire(Uuid $accountId, IdempotencyKey $idempotencyKey,string $requestHash): void
+    public function acquire(Uuid $accountId, IdempotencyKey $idempotencyKey, string $requestHash): void
     {
         $affectedRows = $this->db->executeStatement(
-            "INSERT INTO idempotency_key(account_id, key, request_hash, status)
+            'INSERT INTO idempotency_key(account_id, key, request_hash, status)
              VALUES (:account_id, :key, :request_hash, :status)
-             ON CONFLICT (key) DO NOTHING",
+             ON CONFLICT (key) DO NOTHING',
             [
                 'account_id' => $accountId,
                 'key' => $idempotencyKey->value,
                 'request_hash' => $requestHash,
-                'status' => IdempotencyStatus::Processing->value
+                'status' => IdempotencyStatus::Processing->value,
             ]
         );
 
-        if ($affectedRows === 1) {
+        if (1 === $affectedRows) {
             return;
         }
 
-
-        $existing = $this->db->fetchAssociative("
+        $existing = $this->db->fetchAssociative('
             SELECT request_hash, status
             FROM idempotency_key
-            WHERE key = :key FOR UPDATE",
+            WHERE key = :key FOR UPDATE',
             [
-                'key' => $idempotencyKey->value
+                'key' => $idempotencyKey->value,
             ]
         );
 
-        if($existing['request_hash'] !== $requestHash) {
+        if ($existing['request_hash'] !== $requestHash) {
             throw new IdempotencyConflictException();
         }
 
-        if($existing['status'] === IdempotencyStatus::Processing->value) {
+        if ($existing['status'] === IdempotencyStatus::Processing->value) {
             throw new AlreadyProcessingException();
         }
 
@@ -57,11 +57,11 @@ class DbalIdempotencyStore
     public function markAsCompleted(Uuid $accountId, IdempotencyKey $idempotencyKey): void
     {
         $this->db->executeStatement(
-            "UPDATE idempotency_key SET status = :status WHERE account_id = :account_id AND key = :key",
+            'UPDATE idempotency_key SET status = :status WHERE account_id = :account_id AND key = :key',
             [
                 'status' => IdempotencyStatus::Succeeded->value,
                 'account_id' => $accountId->toRfc4122(),
-                'key' => $idempotencyKey->value
+                'key' => $idempotencyKey->value,
             ]
         );
     }

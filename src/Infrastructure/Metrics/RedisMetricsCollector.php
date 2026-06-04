@@ -3,14 +3,16 @@
 namespace App\Infrastructure\Metrics;
 
 use App\Contracts\MetricsCollectorInterface;
-use Redis;
 
 class RedisMetricsCollector implements MetricsCollectorInterface
 {
-    public function __construct(private Redis $redis){}
+    public function __construct(private \Redis $redis)
+    {
+    }
+
     public function incrementTransferCount(string $status): void
     {
-        $this->redis->incr('transfer_count:' . strtolower($status));
+        $this->redis->incr('transfer_count:'.strtolower($status));
     }
 
     public function incrementRetryCount(): void

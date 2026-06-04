@@ -6,5 +6,4 @@ use App\Domain\DomainException;
 
 final class AlreadyProcessingException extends DomainException
 {
-
 }
