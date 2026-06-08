@@ -12,18 +12,18 @@ jobs:
             postgres:
                 image: postgres:16
                 env:
-                    POSTGRES_DB: payment_core_test
+                    POSTGRES_DB: payment_core
                     POSTGRES_USER: app
                     POSTGRES_PASSWORD: app
                 ports:
                     - 5432:5432
                 options: >-
-                    --health-cmd="pg_isready -U app -d payment_core_test"
+                    --health-cmd="pg_isready -U app -d payment_core"
                     --health-interval=10s
                     --health-timeout=5s
                     --health-retries=5
         env:
-            DATABASE_URL: "pgsql://app:app@127.0.0.1:5432/payment_core_test?serverVersion=16&charset=utf8"
+            DATABASE_URL: "pgsql://app:app@127.0.0.1:5432/payment_core?serverVersion=16&charset=utf8"
 
         steps:
             - uses: actions/checkout@v4
@@ -54,6 +54,9 @@ jobs:
 
             - name: Static analysis
               run: vendor/bin/phpstan analyse --no-progress
+
+            -   name: Create test database
+                run: php bin/console doctrine:database:create --if-not-exists --env=test
 
             - name: Database schema(migrations)
               run: php bin/console doctrine:migrations:migrate --no-interaction --env=test
