@@ -32,7 +32,7 @@ final class TransferService
         string $amount,
         string $currency,
         string $idempotencyKey,
-    ) {
+    ) :void  {
         if ($fromAccountId === $toAccountId) {
             throw new \InvalidArgumentException('Transfer to the same account is not allowed.');
         }
@@ -45,9 +45,12 @@ final class TransferService
 
         $amountToWithdraw = new Money($amount, $currency);
 
-        $this->store->acquire(Uuid::fromString($fromAccountId), $key, $requestHash);
 
-        $this->retryRunner->run(function () use ($fromAccountId, $toAccountId, $amount, $currency, $key, $amountToWithdraw) {
+
+        $this->retryRunner->run(function () use ($fromAccountId, $toAccountId, $amount, $currency, $key, $amountToWithdraw,$requestHash) {
+
+            $this->store->acquire(Uuid::fromString($fromAccountId), $key, $requestHash);
+
             $senderData = $this->db->fetchAssociative('SELECT balance,version,currency FROM account WHERE id = :id', ['id' => $fromAccountId]);
 
             if (false === $senderData) {

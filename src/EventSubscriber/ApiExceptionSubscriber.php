@@ -26,7 +26,6 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
         InsufficientFundsException::class => 422,
         CurrencyMismatchException::class => 422,
         IdempotencyConflictException::class => 409,
-        AlreadyProcessingException::class => 409,
         ConcurrencyConflictException::class => 503,
     ];
 

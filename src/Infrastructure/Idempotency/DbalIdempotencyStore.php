@@ -26,7 +26,6 @@ class DbalIdempotencyStore
                 'account_id' => $accountId,
                 'key' => $idempotencyKey->value,
                 'request_hash' => $requestHash,
-                'status' => IdempotencyStatus::Processing->value,
             ]
         );
 
@@ -45,10 +44,6 @@ class DbalIdempotencyStore
 
         if ($existing['request_hash'] !== $requestHash) {
             throw new IdempotencyConflictException();
-        }
-
-        if ($existing['status'] === IdempotencyStatus::Processing->value) {
-            throw new AlreadyProcessingException();
         }
 
         throw new AlreadyProcessedException();
