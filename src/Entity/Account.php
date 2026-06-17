@@ -13,7 +13,7 @@ class Account
     #[ORM\Column]
     private ?string $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(type:'decimal', precision:18, scale: 2)]
     private ?string $balance = null;
 
     #[ORM\Column(length: 3)]

@@ -89,7 +89,7 @@ final class TransferService
             }
 
             $updatedReceiverRows = $this->db->executeStatement(
-                'UPDATE account SET balance = CAST((CAST(balance AS NUMERIC) + CAST(:amount AS NUMERIC)) AS VARCHAR), version = version + 1 WHERE id = :id AND version = :version',
+                'UPDATE account SET balance = (CAST(balance AS NUMERIC) + CAST(:amount AS NUMERIC)), version = version + 1 WHERE id = :id AND version = :version',
                 [
                     'id' => $toAccountId,
                     'amount' => $amount,

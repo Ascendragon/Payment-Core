@@ -1,12 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Method App\\Application\\Transfer\\TransferService\:\:transfer\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: src/Application/Transfer/TransferService.php
-
-		-
 			message: '#^Property App\\Application\\Transfer\\TransferService\:\:\$messageBroker is never read, only written\.$#'
 			identifier: property.onlyWritten
 			count: 1
