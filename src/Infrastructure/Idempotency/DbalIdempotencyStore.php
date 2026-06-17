@@ -5,7 +5,6 @@ namespace App\Infrastructure\Idempotency;
 use App\Domain\Idempotency\IdempotencyStatus;
 use App\Domain\IdempotencyKey;
 use App\Domain\Transfer\Exception\AlreadyProcessedException;
-use App\Domain\Transfer\Exception\AlreadyProcessingException;
 use App\Domain\Transfer\Exception\IdempotencyConflictException;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Uid\Uuid;
@@ -26,6 +25,7 @@ class DbalIdempotencyStore
                 'account_id' => $accountId,
                 'key' => $idempotencyKey->value,
                 'request_hash' => $requestHash,
+                'status' => IdempotencyStatus::Processing->value,
             ]
         );
 
