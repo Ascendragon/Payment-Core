@@ -34,7 +34,7 @@ class Account
 
     public function setBalance(string|int|float $balance): static
     {
-        $this->balance =  (string)$balance;
+        $this->balance = (string) $balance;
 
         return $this;
     }
