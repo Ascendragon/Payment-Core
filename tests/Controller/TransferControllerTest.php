@@ -240,13 +240,13 @@ class TransferControllerTest extends WebTestCase
             'id' => 'd290f1ee-6c54-4b01-90e6-d701748f0851',
         ]);
 
-        $this->assertEquals('1500', $senderBalance);
+        $this->assertEquals('1500.00', $senderBalance);
 
         $receiverBalance = $db->fetchOne('SELECT balance FROM account WHERE id = :id', [
             'id' => '71a8f9eb-2b36-4078-956f-235805dd6ab8',
         ]);
 
-        $this->assertEquals('1500', $receiverBalance);
+        $this->assertEquals('1500.00', $receiverBalance);
 
         $countOutbox = $db->fetchOne('SELECT COUNT(*) FROM outbox_message');
         $this->assertEquals(0, (int) $countOutbox);
