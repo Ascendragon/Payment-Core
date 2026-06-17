@@ -5,7 +5,6 @@ namespace App\EventSubscriber;
 use App\Domain\DomainException;
 use App\Domain\Transfer\Exception\AccountNotFoundException;
 use App\Domain\Transfer\Exception\AlreadyProcessedException;
-use App\Domain\Transfer\Exception\AlreadyProcessingException;
 use App\Domain\Transfer\Exception\ConcurrencyConflictException;
 use App\Domain\Transfer\Exception\CurrencyMismatchException;
 use App\Domain\Transfer\Exception\IdempotencyConflictException;

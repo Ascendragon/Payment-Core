@@ -304,9 +304,8 @@ class TransferControllerTest extends WebTestCase
         $db = static::getContainer()->get(Connection::class);
         $db->executeStatement('TRUNCATE TABLE account,outbox_message,idempotency_key,payment CASCADE;');
 
-        $db->executeStatement("INSERT INTO account(id,balance,currency,version) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', 100, 'RUB', 1)");
-        $db->executeStatement("INSERT INTO account(id, balance, currency, version) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', 0, 'RUB' , 1)");
-
+        $db->executeStatement("INSERT INTO account(id,balance,currency,version) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', 100.00, 'RUB', 1)");
+        $db->executeStatement("INSERT INTO account(id, balance, currency, version) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', 0.00, 'RUB' , 1)");
 
         $server = ['CONTENT_TYPE' => 'application/json', 'HTTP_IDEMPOTENCY_KEY' => 'retry-key-001'];
         $payload = json_encode([
@@ -317,28 +316,32 @@ class TransferControllerTest extends WebTestCase
         ]);
 
         // Акт 1.Запрос проваливается
-        $client->request('POST', '/api/transfer',[], [],$server,$payload);
+        $client->request('POST', '/api/transfer', [], [], $server, $payload);
         $this->assertResponseStatusCodeSame(422);
 
-        $stuck = $db->fetchOne("SELECT COUNT(*) FROM idempotency_key WHERE key = :key", ['key' => 'retry-key-001']);
-        $this->assertSame(0, $stuck, 'Провальный перевод не должен оставлять отравленный ключ');
+        $stuck = $db->fetchOne('SELECT COUNT(*) FROM idempotency_key WHERE key = :key', ['key' => 'retry-key-001']);
+        $this->assertSame(0, (int) $stuck, 'Провальный перевод не должен оставлять отравленный ключ');
 
         // Assert промежуточный: ничего не протекло, баланс не изменился.
         // outbox пуст
+        $this->assertSame('100.00', (string) $db->fetchOne('SELECT balance FROM account WHERE id = :id', [
+            'id' => 'd290f1ee-6c54-4b01-90e6-d701748f0851',
+        ]));
+        $this->assertSame('0.00', (string) $db->fetchOne('SELECT balance FROM account WHERE id = :id', [
+            'id' => '71a8f9eb-2b36-4078-956f-235805dd6ab8',
+        ]));
 
         // Arrange 2:Устраняем причину сбоя,пополняя счет
-        $db->executeStatement("UPDATE account SET balance = 1000 WHERE id = :id", ['id' => 'd290f1ee-6c54-4b01-90e6-d701748f0851']);
+        $db->executeStatement('UPDATE account SET balance = 1000 WHERE id = :id', ['id' => 'd290f1ee-6c54-4b01-90e6-d701748f0851']);
 
         $client->request('POST', '/api/transfer', [], [], $server, $payload);
         $this->assertResponseIsSuccessful();
-        $this->assertSame('850.00', (string)$db->fetchOne('SELECT balance FROM account WHERE id = :id', [
-            'id' => 'd290f1ee-6c54-4b01-90e6-d701748f0851'
+        $this->assertSame('850.00', (string) $db->fetchOne('SELECT balance FROM account WHERE id = :id', [
+            'id' => 'd290f1ee-6c54-4b01-90e6-d701748f0851',
         ]));
-        $this->assertSame('150.00', (string)$db->fetchOne('SELECT balance FROM account WHERE id = :id', [
-            'id' => '71a8f9eb-2b36-4078-956f-235805dd6ab8'
+        $this->assertSame('150.00', (string) $db->fetchOne('SELECT balance FROM account WHERE id = :id', [
+            'id' => '71a8f9eb-2b36-4078-956f-235805dd6ab8',
         ]));
         $this->assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM outbox_message'));
-
-
     }
 }
