@@ -14,7 +14,7 @@ class Account
     private ?string $id = null;
 
     #[ORM\Column(type: 'decimal', precision: 18, scale: 2)]
-    private ?string $balance = null;
+    private string $balance = '0.00';
 
     #[ORM\Column(length: 3)]
     private ?string $currency = null;
@@ -32,9 +32,9 @@ class Account
         return $this->balance;
     }
 
-    public function setBalance(string $balance): static
+    public function setBalance(string|int|float $balance): static
     {
-        $this->balance = $balance;
+        $this->balance =  (string)$balance;
 
         return $this;
     }
