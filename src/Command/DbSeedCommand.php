@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Kernel;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -11,6 +12,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Uid\Uuid;
 
 #[AsCommand(
@@ -19,7 +21,7 @@ use Symfony\Component\Uid\Uuid;
 )]
 class DbSeedCommand extends Command
 {
-    public function __construct(private readonly Connection $db)
+    public function __construct(private readonly Connection $db, private readonly KernelInterface $kernel)
     {
         parent::__construct();
     }
@@ -35,6 +37,11 @@ class DbSeedCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $env = $this->kernel->getEnvironment();
+        if(!(in_array($env, ['dev','test'], true))) {
+            $io->error("Сид запрещен вне dev/test");
+            return Command::FAILURE;
+        }
 
         $totalAccounts = 1000000;
         $chunkSize = 5000;
@@ -46,7 +53,19 @@ class DbSeedCommand extends Command
         $values = [];
         $params = [];
 
-        $this->db->executeStatement('TRUNCATE TABLE account CASCADE');
+        $this->db->executeStatement('TRUNCATE TABLE app_user CASCADE');
+
+        $userIds = [];
+        $userCount = 3;
+        for($u = 0; $u < $userCount; $u++) {
+            $id = UUID::v4()->toRfc4122();
+            $token = bin2hex(random_bytes(32));
+            $hash = hash('sha256', $token);
+
+            $this->db->executeStatement("INSERT INTO app_user(id,name,api_token_hash) VALUES(?, ?, ?), [$id, 'demo-user-$u', $hash]);]");
+            $userIds[] = $id;
+            $io->writeln(sprintf('user=%s token=<comment>%s</comment>', $id, $token));
+        }
 
         for ($i = 1; $i <= $totalAccounts; ++$i) {
             $uuid = Uuid::v4()->toRfc4122();
