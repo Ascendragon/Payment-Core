@@ -2,7 +2,6 @@
 
 namespace App\Command;
 
-use App\Kernel;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -38,8 +37,9 @@ class DbSeedCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         $env = $this->kernel->getEnvironment();
-        if(!(in_array($env, ['dev','test'], true))) {
-            $io->error("Сид запрещен вне dev/test");
+        if (!in_array($env, ['dev', 'test'], true)) {
+            $io->error('Сид запрещен вне dev/test');
+
             return Command::FAILURE;
         }
 
@@ -57,8 +57,8 @@ class DbSeedCommand extends Command
 
         $userIds = [];
         $userCount = 3;
-        for($u = 0; $u < $userCount; $u++) {
-            $id = UUID::v4()->toRfc4122();
+        for ($u = 0; $u < $userCount; ++$u) {
+            $id = Uuid::v4()->toRfc4122();
             $token = bin2hex(random_bytes(32));
             $hash = hash('sha256', $token);
 
