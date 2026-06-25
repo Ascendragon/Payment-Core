@@ -14,7 +14,10 @@ security:
             security: false
         main:
             lazy: true
+            stateless: true
             provider: users_in_memory
+            access_token:
+                token_handler: App\Security\AccessTokenHandler
 
             # Activate different ways to authenticate:
             # https://symfony.com/doc/current/security.html#the-firewall
@@ -24,6 +27,7 @@ security:
 
     # Note: Only the *first* matching rule is applied
     access_control:
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
         # - { path: ^/admin, roles: ROLE_ADMIN }
         # - { path: ^/profile, roles: ROLE_USER }
 

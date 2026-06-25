@@ -53,7 +53,7 @@ jobs:
               run: vendor/bin/php-cs-fixer fix --dry-run --diff
 
             - name: Static analysis
-              run: vendor/bin/phpstan analyse --no-progress
+              run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 
             -   name: Create test database
                 run: php bin/console doctrine:database:create --if-not-exists --env=test

@@ -40,6 +40,7 @@ class TransferControllerTest extends WebTestCase
             [],
             [],
             [
+                'HTTP_AUTHORIZATION' => 'Bearer test-token',
                 'CONTENT_TYPE' => 'application/json',
                 'HTTP_IDEMPOTENCY_KEY' => 'test-key-001', // В тестах префикс HTTP_ обязателен для кастомных заголовков
             ],
@@ -105,6 +106,7 @@ class TransferControllerTest extends WebTestCase
             [
                 'CONTENT_TYPE' => 'application/json',
                 'HTTP_IDEMPOTENCY_KEY' => 'test-key-001',
+                'HTTP_AUTHORIZATION' => 'Bearer test-token',
             ],
             self::json($payload)
         );
@@ -131,6 +133,7 @@ class TransferControllerTest extends WebTestCase
         $server = [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_IDEMPOTENCY_KEY' => 'same-key-123',
+            'HTTP_AUTHORIZATION' => 'Bearer test-token',
         ];
 
         $client->request('POST', '/api/transfer', [], [], $server, self::json($payload));
@@ -169,6 +172,7 @@ class TransferControllerTest extends WebTestCase
         $sameHeader = [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_IDEMPOTENCY_KEY' => 'same-key-123',
+            'HTTP_AUTHORIZATION' => 'Bearer test-token',
         ];
 
         $payload1 = [
@@ -234,7 +238,9 @@ class TransferControllerTest extends WebTestCase
             '/api/transfer',
             [],
             [],
-            ['CONTENT_TYPE' => 'application/json'],
+            ['CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer test-token'],
+
             self::json($payload)
         );
 
@@ -290,6 +296,7 @@ class TransferControllerTest extends WebTestCase
             [
                 'CONTENT_TYPE' => 'application/json',
                 'HTTP_IDEMPOTENCY_KEY' => 'insufficient-funds-001',
+                'HTTP_AUTHORIZATION' => 'Bearer test-token',
             ],
             self::json($payload)
         );
@@ -320,7 +327,7 @@ class TransferControllerTest extends WebTestCase
         $db->executeStatement("INSERT INTO account(id,balance,currency,version,owner_id) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', 100.00, 'RUB', 1, '".self::OWNER_ID."')");
         $db->executeStatement("INSERT INTO account(id, balance, currency, version,owner_id) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', 0.00, 'RUB' , 1, '".self::OWNER_ID."')");
 
-        $server = ['CONTENT_TYPE' => 'application/json', 'HTTP_IDEMPOTENCY_KEY' => 'retry-key-001'];
+        $server = ['CONTENT_TYPE' => 'application/json', 'HTTP_IDEMPOTENCY_KEY' => 'retry-key-001', 'HTTP_AUTHORIZATION' => 'Bearer test-token'];
         $payload = [
             'fromAccountId' => 'd290f1ee-6c54-4b01-90e6-d701748f0851',
             'toAccountId' => '71a8f9eb-2b36-4078-956f-235805dd6ab8',
@@ -356,6 +363,25 @@ class TransferControllerTest extends WebTestCase
             'id' => '71a8f9eb-2b36-4078-956f-235805dd6ab8',
         ]));
         $this->assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM outbox_message'));
+    }
+
+    public function testMissingTokenReturns401(): void
+    {
+        $client = static::createClient();
+        $client->request(
+            'POST',
+            '/api/transfer',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json', 'HTTP_IDEMPOTENCY_KEY' => 'no-token-001'],
+            self::json([
+                'fromAccountId' => 'd290f1ee-6c54-4b01-90e6-d701748f0851',
+                'toAccountId' => '71a8f9eb-2b36-4078-956f-235805dd6ab8',
+                'amount' => '10.00',
+                'currency' => 'RUB',
+            ])
+        );
+        $this->assertResponseStatusCodeSame(401);
     }
 
     /**
