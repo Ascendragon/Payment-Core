@@ -4,11 +4,10 @@ namespace App\Security;
 
 use Symfony\Component\Security\Core\User\UserInterface;
 
-
 final class SecurityUser implements UserInterface
 {
     /**
-     * @param non-empty-string $id
+     * @param non-empty-string       $id
      * @param list<non-empty-string> $roles
      */
     public function __construct(
