@@ -17,6 +17,7 @@ class TransferControllerTest extends WebTestCase
             ['id' => self::OWNER_ID, 'h' => hash('sha256', 'test-token')]
         );
     }
+
     public function testSuccesfulTransfer()
     {
         $client = static::createClient();
