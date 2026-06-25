@@ -62,9 +62,9 @@ class DbSeedCommand extends Command
             $token = bin2hex(random_bytes(32));
             $hash = hash('sha256', $token);
 
-            $this->db->executeStatement("INSERT INTO app_user(id,name,api_token_hash) VALUES(?, ?, ?), [$id, 'demo-user-$u', $hash]);]");
+            $this->db->executeStatement("INSERT INTO app_user(id,name,api_token_hash) VALUES(?, ?, ?)", [$id, "demo-user-$u", $hash]);
             $userIds[] = $id;
-            $io->writeln(sprintf('user=%s token=<comment>%s</comment>', $id, $token));
+            $io->writeln(sprintf('user=%s token=<comment>%s</comment>', $userIds[$u], $token));
         }
 
         for ($i = 1; $i <= $totalAccounts; ++$i) {
@@ -72,15 +72,17 @@ class DbSeedCommand extends Command
             $balance = rand(100, 100000).'.00';
             $currency = 'RUB';
             $version = 1;
+            $ownerId  = $userIds[$i % $userCount];
 
-            $values[] = '(?, ?, ?, ?)';
+            $values[] = '(?, ?, ?, ?,?)';
             $params[] = $uuid;
             $params[] = $balance;
             $params[] = $version;
             $params[] = $currency;
+            $params[] = $ownerId;
 
             if (0 === $i % $chunkSize) {
-                $sql = 'INSERT INTO account (id, balance, version,currency) VALUES '.implode(', ', $values);
+                $sql = 'INSERT INTO account (id, balance, version,currency,owner_id) VALUES '.implode(', ', $values);
                 $this->db->executeStatement($sql, $params);
                 $values = [];
                 $params = [];

@@ -8,14 +8,23 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 class TransferControllerTest extends WebTestCase
 {
+    private const OWNER_ID = '00000000-0000-4000-8000-000000000001';
+
+    private function seedOwner(Connection $db): void
+    {
+        $db->executeStatement(
+            "INSERT INTO app_user (id, name, api_token_hash) VALUES (:id, 'test-owner', :h)",
+            ['id' => self::OWNER_ID, 'h' => hash('sha256', 'test-token')]
+        );
+    }
     public function testSuccesfulTransfer()
     {
         $client = static::createClient();
         $db = static::getContainer()->get(Connection::class);
-        $db->executeStatement('TRUNCATE TABLE account,outbox_message,idempotency_key,payment CASCADE;');
-
-        $db->executeStatement("INSERT INTO account(id, balance,currency,version) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', 1500, 'RUB', 1)");
-        $db->executeStatement("INSERT INTO account(id, balance,currency,version) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', 1500, 'RUB', 1)");
+        $db->executeStatement('TRUNCATE TABLE app_user, account, outbox_message, idempotency_key, payment CASCADE;');
+        $this->seedOwner($db);
+        $db->executeStatement("INSERT INTO account(id, balance,currency,version,owner_id) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', 1500, 'RUB', 1, '".self::OWNER_ID."')");
+        $db->executeStatement("INSERT INTO account(id, balance,currency,version,owner_id) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', 1500, 'RUB', 1, '".self::OWNER_ID."')");
 
         $payload = [
             'fromAccountId' => 'd290f1ee-6c54-4b01-90e6-d701748f0851',
@@ -106,9 +115,10 @@ class TransferControllerTest extends WebTestCase
         $client = static::createClient();
         $db = static::getContainer()->get(Connection::class);
 
-        $db->executeStatement('TRUNCATE TABLE account,outbox_message, idempotency_key,payment CASCADE');
-        $db->executeStatement("INSERT INTO account(id, balance,currency,version) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', 1500, 'RUB', 1)");
-        $db->executeStatement("INSERT INTO account(id, balance,currency,version) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', 1500, 'RUB', 1)");
+        $db->executeStatement('TRUNCATE TABLE app_user, account, outbox_message, idempotency_key, payment CASCADE;');
+        $this->seedOwner($db);
+        $db->executeStatement("INSERT INTO account(id, balance,currency,version,owner_id) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', 1500, 'RUB', 1, '".self::OWNER_ID."')");
+        $db->executeStatement("INSERT INTO account(id, balance,currency,version,owner_id) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', 1500, 'RUB', 1, '".self::OWNER_ID."')");
 
         $payload = [
             'fromAccountId' => 'd290f1ee-6c54-4b01-90e6-d701748f0851',
@@ -150,9 +160,10 @@ class TransferControllerTest extends WebTestCase
         $client = static::createClient();
         $db = static::getContainer()->get(Connection::class);
 
-        $db->executeStatement('TRUNCATE TABLE account,outbox_message,idempotency_key,payment CASCADE;');
-        $db->executeStatement("INSERT INTO account(id, balance,currency,version) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', 1500, 'RUB', 1)");
-        $db->executeStatement("INSERT INTO account(id, balance,currency,version) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', 1500, 'RUB', 1)");
+        $db->executeStatement('TRUNCATE TABLE app_user, account, outbox_message, idempotency_key, payment CASCADE;');
+        $this->seedOwner($db);
+        $db->executeStatement("INSERT INTO account(id, balance,currency,version,owner_id) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', 1500, 'RUB', 1, '".self::OWNER_ID."')");
+        $db->executeStatement("INSERT INTO account(id, balance,currency,version,owner_id) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', 1500, 'RUB', 1, '".self::OWNER_ID."')");
 
         $sameHeader = [
             'CONTENT_TYPE' => 'application/json',
@@ -205,9 +216,10 @@ class TransferControllerTest extends WebTestCase
         $client = static::createClient();
         $db = static::getContainer()->get(Connection::class);
 
-        $db->executeStatement('TRUNCATE TABLE account,outbox_message,idempotency_key,payment CASCADE;');
-        $db->executeStatement("INSERT INTO account(id,balance,currency,version) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', '1500', 'RUB', 1)");
-        $db->executeStatement("INSERT INTO account(id,balance,currency,version) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', '1500', 'RUB', 1)");
+        $db->executeStatement('TRUNCATE TABLE app_user, account, outbox_message, idempotency_key, payment CASCADE;');
+        $this->seedOwner($db);
+        $db->executeStatement("INSERT INTO account(id,balance,currency,version,owner_id) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', '1500', 'RUB', 1, '".self::OWNER_ID."')");
+        $db->executeStatement("INSERT INTO account(id,balance,currency,version,owner_id) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', '1500', 'RUB', 1, '".self::OWNER_ID."')");
 
         $payload = [
             'fromAccountId' => 'd290f1ee-6c54-4b01-90e6-d701748f0851',
@@ -257,9 +269,10 @@ class TransferControllerTest extends WebTestCase
         $client = static::createClient();
         $db = static::getContainer()->get(Connection::class);
 
-        $db->executeStatement('TRUNCATE TABLE account,outbox_message,idempotency_key,payment CASCADE;');
-        $db->executeStatement("INSERT INTO account(id,balance,currency,version) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', '130', 'RUB', 1)");
-        $db->executeStatement("INSERT INTO account(id,balance,currency,version) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', '1500', 'RUB', 1)");
+        $db->executeStatement('TRUNCATE TABLE app_user, account, outbox_message, idempotency_key, payment CASCADE;');
+        $this->seedOwner($db);
+        $db->executeStatement("INSERT INTO account(id,balance,currency,version,owner_id) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', '130', 'RUB', 1, '".self::OWNER_ID."')");
+        $db->executeStatement("INSERT INTO account(id,balance,currency,version,owner_id) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', '1500', 'RUB', 1, '".self::OWNER_ID."')");
 
         $payload = [
             'fromAccountId' => 'd290f1ee-6c54-4b01-90e6-d701748f0851',
@@ -301,10 +314,10 @@ class TransferControllerTest extends WebTestCase
         // Arrange
         $client = static::createClient();
         $db = static::getContainer()->get(Connection::class);
-        $db->executeStatement('TRUNCATE TABLE account,outbox_message,idempotency_key,payment CASCADE;');
-
-        $db->executeStatement("INSERT INTO account(id,balance,currency,version) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', 100.00, 'RUB', 1)");
-        $db->executeStatement("INSERT INTO account(id, balance, currency, version) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', 0.00, 'RUB' , 1)");
+        $db->executeStatement('TRUNCATE TABLE app_user, account, outbox_message, idempotency_key, payment CASCADE;');
+        $this->seedOwner($db);
+        $db->executeStatement("INSERT INTO account(id,balance,currency,version,owner_id) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', 100.00, 'RUB', 1, '".self::OWNER_ID."')");
+        $db->executeStatement("INSERT INTO account(id, balance, currency, version,owner_id) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', 0.00, 'RUB' , 1, '".self::OWNER_ID."')");
 
         $server = ['CONTENT_TYPE' => 'application/json', 'HTTP_IDEMPOTENCY_KEY' => 'retry-key-001'];
         $payload = [
