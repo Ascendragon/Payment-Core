@@ -1,0 +1,6 @@
+#!/bin/sh
+staged=$(git diff --cached --name-only --diff-filter=ACM -- '*.php')
+[ -z "$staged" ] && exit 0
+printf '%s\n' "$staged" | xargs vendor/bin/php-cs-fixer fix --path-mode=intersection --quiet --
+printf '%s\n' "$staged" | xargs git add
+exit 0
