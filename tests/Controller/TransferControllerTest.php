@@ -391,4 +391,31 @@ class TransferControllerTest extends WebTestCase
     {
         return json_encode($payload, JSON_THROW_ON_ERROR);
     }
+    public function testTransferFromForeignAccountReturns403(): void
+    {
+        $client = static::createClient();
+        $db = static::getContainer()->get(Connection::class);
+        $db->executeStatement('TRUNCATE TABLE app_user, account, outbox_message, idempotency_key, payment CASCADE;');
+
+        $this->seedOwner($db);
+
+        $foreignId = '00000000-0000-4000-8000-000000000002';
+        $db->executeStatement(
+            "INSERT INTO app_user (id, name, api_token_hash) VALUES (:id, 'foreign', :h)",
+            ['id' => $foreignId, 'h' => hash('sha256', 'foreign-token')]
+        );
+        $db->executeStatement("INSERT INTO account(id,balance,currency,version,owner_id) VALUES('d290f1ee-6c54-4b01-90e6-d701748f0851', 1500, 'RUB', 1, '".$foreignId."')");
+        $db->executeStatement("INSERT INTO account(id,balance,currency,version,owner_id) VALUES('71a8f9eb-2b36-4078-956f-235805dd6ab8', 1500, 'RUB', 1, '".self::OWNER_ID."')");
+        $client->request('POST', '/api/transfer', [], [],
+            ['CONTENT_TYPE' => 'application/json', 'HTTP_IDEMPOTENCY_KEY' => 'foreign-403', 'HTTP_AUTHORIZATION' => 'Bearer test-token'],
+            self::json([
+                'fromAccountId' => 'd290f1ee-6c54-4b01-90e6-d701748f0851',
+                'toAccountId'   => '71a8f9eb-2b36-4078-956f-235805dd6ab8',
+                'amount' => '10.00', 'currency' => 'RUB',
+            ])
+        );
+        $this->assertResponseStatusCodeSame(403);
+        $this->assertEquals('1500.00', $db->fetchOne('SELECT balance FROM account WHERE id = :id', ['id' => 'd290f1ee-6c54-4b01-90e6-d701748f0851']));
+        $this->assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM outbox_message'));
+    }
 }

@@ -7,6 +7,7 @@ use App\Domain\IdempotencyKey;
 use App\Domain\Money;
 use App\Domain\Transfer\Exception\AccountNotFoundException;
 use App\Domain\Transfer\Exception\ConcurrencyConflictException;
+use App\Domain\Transfer\Exception\ForbiddenException;
 use App\Domain\Transfer\Exception\InsufficientFundsException;
 use App\Domain\Transfer\Message\TransferCompletedMessage;
 use App\Infrastructure\Database\DatabaseRetryRunner;
@@ -32,6 +33,7 @@ final class TransferService
         string $amount,
         string $currency,
         string $idempotencyKey,
+        string $callerId
     ): void {
         if ($fromAccountId === $toAccountId) {
             throw new \InvalidArgumentException('Transfer to the same account is not allowed.');
@@ -45,13 +47,16 @@ final class TransferService
 
         $amountToWithdraw = new Money($amount, $currency);
 
-        $this->retryRunner->run(function () use ($fromAccountId, $toAccountId, $amount, $currency, $key, $amountToWithdraw, $requestHash) {
+        $this->retryRunner->run(function () use ($fromAccountId, $toAccountId, $amount, $currency, $key, $amountToWithdraw, $requestHash,$callerId) {
             $this->store->acquire(Uuid::fromString($fromAccountId), $key, $requestHash);
 
-            $senderData = $this->db->fetchAssociative('SELECT balance,version,currency FROM account WHERE id = :id', ['id' => $fromAccountId]);
+            $senderData = $this->db->fetchAssociative('SELECT balance,version,currency,owner_id FROM account WHERE id = :id', ['id' => $fromAccountId]);
 
             if (false === $senderData) {
                 throw new AccountNotFoundException($fromAccountId);
+            }
+            if($senderData['owner_id'] !== $callerId) {
+                throw new ForbiddenException();
             }
 
             $receiverData = $this->db->fetchAssociative(

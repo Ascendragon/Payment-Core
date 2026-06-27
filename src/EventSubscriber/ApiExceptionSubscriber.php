@@ -7,6 +7,7 @@ use App\Domain\Transfer\Exception\AccountNotFoundException;
 use App\Domain\Transfer\Exception\AlreadyProcessedException;
 use App\Domain\Transfer\Exception\ConcurrencyConflictException;
 use App\Domain\Transfer\Exception\CurrencyMismatchException;
+use App\Domain\Transfer\Exception\ForbiddenException;
 use App\Domain\Transfer\Exception\IdempotencyConflictException;
 use App\Domain\Transfer\Exception\InsufficientFundsException;
 use Psr\Log\LoggerInterface;
@@ -26,6 +27,7 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
         CurrencyMismatchException::class => 422,
         IdempotencyConflictException::class => 409,
         ConcurrencyConflictException::class => 503,
+        ForbiddenException::class => 403,
     ];
 
     public function __construct(private LoggerInterface $logger)
