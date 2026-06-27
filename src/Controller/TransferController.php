@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 class TransferController
 {
@@ -54,7 +55,11 @@ class TransferController
         if (!$idempotencyKey) {
             return new JsonResponse(['error' => 'Missing Idempotency-Key header'], 400);
         }
-        $callerId = $this->security->getUser()->getUserIdentifier();
+        $user = $this->security->getUser();
+        if (null === $user) {
+            throw new AccessDeniedException('Authentication required.');
+        }
+        $callerId = $user->getUserIdentifier();
         $transferService->transfer(
             $payload->fromAccountId,
             $payload->toAccountId,
