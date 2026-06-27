@@ -6,7 +6,6 @@ use App\Application\Transfer\TransferService;
 use App\Http\Request\TransferRequest;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,7 +14,10 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class TransferController
 {
-    public function __construct(private readonly Security $security){}
+    public function __construct(private readonly Security $security)
+    {
+    }
+
     #[Route('api/transfer', name: 'api_transfer', methods: ['POST'])]
     #[OA\Post(
         summary: 'Перевод средств',
@@ -44,7 +46,6 @@ class TransferController
         description: 'Уникальный ключ запроса (UUID v4) для защиты от двойных списаний',
         schema: new OA\Schema(type: 'string')
     )]
-
     public function transfer(#[MapRequestPayload] TransferRequest $payload,
         Request $request,
         TransferService $transferService,
